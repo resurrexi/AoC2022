@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "aoc2022"
+version = "0.1.0"
+description = ""
+authors = ["Liquan Yang <yang.liquan87@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+[tool.poetry.dev-dependencies]
+black = "^22.10.0"
+pylint = "^2.15.7"
+flake8 = "^6.0.0"
+isort = "^5.10.1"
+
+[tool.black]
+line-length = 80
+
+[tool.isort]
+profile = "black"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
