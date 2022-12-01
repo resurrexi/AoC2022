@@ -22,7 +22,7 @@ def get_packed_quantities(filepath):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser("Get packelf king index and quantity.")
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "input_path",
         help="Path to input file",
