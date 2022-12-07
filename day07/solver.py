@@ -63,7 +63,7 @@ def build_tree(filepath):
 
 def traverse_tree(current, dirs={}, to_traverse=[]):
     # add directory to dirs
-    dirs[current.name] = dirs.get(current, 0)
+    dirs[current.name] = dirs.get(current.name, 0)
     # fetch all target dirs that fall in the current dir's path (parents + current)
     target_dirs = [d for d in dirs.keys() if current.name.startswith(d)]
 
