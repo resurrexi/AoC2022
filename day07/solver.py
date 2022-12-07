@@ -32,15 +32,14 @@ def build_tree(filepath):
             line = line.strip()
 
             if line.startswith("$ cd"):
-                _, command, argument = line.split()
+                _, _, argument = line.split()
 
-                if command == "cd":
-                    if argument == "/":
-                        root = current = Node("/")
-                    elif argument == "..":
-                        current = current.up()
-                    else:
-                        current = current.down(f"{current.name}/{argument}")
+                if argument == "/":
+                    root = current = Node("/")
+                elif argument == "..":
+                    current = current.up()
+                else:
+                    current = current.down(f"{current.name}/{argument}")
             elif line.startswith("$ ls"):
                 pass  # ignore this command
             else:
