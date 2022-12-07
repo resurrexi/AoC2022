@@ -40,20 +40,46 @@ def build_tree(filepath):
                     elif argument == "..":
                         current = current.up()
                     else:
-                        current = current.down(argument)
+                        current = current.down(f"{current.name}/{argument}")
             elif line.startswith("$ ls"):
                 pass  # ignore this command
             else:
                 detail, name = line.split()
 
                 if detail.startswith("dir"):
-                    current.add_child(Node(name, parent=current))
+                    current.add_child(
+                        Node(f"{current.name}/{name}", parent=current)
+                    )
                 else:
                     current.add_child(
-                        Node(name, parent=current, size=int(detail))
+                        Node(
+                            f"{current.name}/{name}",
+                            parent=current,
+                            size=int(detail),
+                        )
                     )
 
     return root
+
+
+def traverse_tree(current, dirs={}, to_traverse=[]):
+    # add directory to dirs
+    dirs[current.name] = dirs.get(current, 0)
+    # fetch all target dirs that fall in the current dir's path (parents + current)
+    target_dirs = [d for d in dirs.keys() if current.name.startswith(d)]
+
+    for child in current.children:
+        if child.size:
+            for dir in target_dirs:
+                dirs[dir] = dirs.get(dir, 0) + child.size
+        else:
+            to_traverse.append(child)
+
+    if to_traverse:
+        new_dir = to_traverse.pop()
+        return traverse_tree(new_dir, dirs, to_traverse)
+
+    return dirs
 
 
 if __name__ == "__main__":
@@ -71,8 +97,20 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    start = build_tree(args.input_path)
+    dirs = traverse_tree(start)
+
     if args.part == "1":
-        start = build_tree(args.input_path)
-        print(start)
+        sizes_under_100k = [v for v in dirs.values() if v <= 100000]
+        print(sum(sizes_under_100k))
     else:
-        pass
+        # get size of root
+        root_size = dirs["/"]
+
+        remaining = 70000000 - root_size
+        space_to_free_up = 30000000 - remaining
+        sizes_meeting_criteria = [
+            v for v in dirs.values() if v >= space_to_free_up
+        ]
+
+        print(min(sizes_meeting_criteria))
