@@ -16,7 +16,7 @@ class Node:
 
     def down(self, name):
         for child in self.children:
-            if child.name == name:
+            if child.name == name and child.size is None:
                 return child
 
     def __str__(self):
