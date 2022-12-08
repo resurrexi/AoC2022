@@ -13,56 +13,30 @@ def build_matrix(filepath):
 
 
 def count_visible_trees(matrix):
-    positions = set()
+    count = 0
+    dim_row, dim_col = len(matrix), len(matrix[0])
 
-    # left and right
-    for idx, row in enumerate(matrix):
-        # from left
-        highest = 0
-        for col_idx, tree in enumerate(row):
-            if idx == 0 or idx == len(matrix) - 1:
-                positions.add(f"{idx}-{col_idx}")
-            elif col_idx == 0:
-                highest = tree
-            elif tree > highest:
-                positions.add(f"{idx}-{col_idx}")
-                highest = tree
+    for row_idx in range(dim_row):
+        for col_idx in range(dim_col):
+            if row_idx == 0 or col_idx == 0:
+                count += 1
+            else:
+                current = matrix[row_idx][col_idx]
+                left = matrix[row_idx][:col_idx]
+                right = matrix[row_idx][col_idx + 1 :]
+                top = [row[col_idx] for row in matrix[:row_idx]]
+                bottom = [row[col_idx] for row in matrix[row_idx + 1 :]]
 
-        # from right
-        reversed = row[::-1]
-        highest = 0
-        for col_idx, tree in enumerate(reversed):
-            if col_idx == 0:
-                highest = tree
-            elif tree > highest:
-                positions.add(f"{idx}-{len(reversed) - 1 - col_idx}")
-                highest = tree
+                if (
+                    all(tree < current for tree in left)
+                    or all(tree < current for tree in right)
+                    or all(tree < current for tree in top)
+                    or all(tree < current for tree in bottom)
+                ):
+                    count += 1
 
-    # top and bottom
-    transposed = list(zip(*matrix))
-    for idx, col in enumerate(transposed):
-        # from top
-        highest = 0
-        for row_idx, tree in enumerate(col):
-            if idx == 0 or idx == len(transposed) - 1:
-                positions.add(f"{row_idx}-{idx}")
-            elif row_idx == 0:
-                highest = tree
-            elif tree > highest:
-                positions.add(f"{row_idx}-{idx}")
-                highest = tree
+    return count
 
-        # from bottom
-        reversed = col[::-1]
-        highest = 0
-        for row_idx, tree in enumerate(reversed):
-            if row_idx == 0:
-                highest = tree
-            elif tree > highest:
-                positions.add(f"{len(reversed) - 1 - row_idx}-{idx}")
-                highest = tree
-
-    return len(positions)
 
 def get_highest_scenic_score(matrix):
     score = 0
@@ -89,9 +63,9 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    matrix = build_matrix(args.input_path)
+    treemap = build_matrix(args.input_path)
 
     if args.part == "1":
-        print(count_visible_trees(matrix))
+        print(count_visible_trees(treemap))
     else:
-        print(get_highest_scenic_score(matrix))
+        print(get_highest_scenic_score(treemap))
