@@ -18,34 +18,59 @@ def count_visible_trees(matrix):
 
     for row_idx in range(dim_row):
         for col_idx in range(dim_col):
-            if row_idx == 0 or col_idx == 0:
-                count += 1
-            else:
-                current = matrix[row_idx][col_idx]
-                left = matrix[row_idx][:col_idx]
-                right = matrix[row_idx][col_idx + 1 :]
-                top = [row[col_idx] for row in matrix[:row_idx]]
-                bottom = [row[col_idx] for row in matrix[row_idx + 1 :]]
+            current = matrix[row_idx][col_idx]
+            left = matrix[row_idx][:col_idx]
+            right = matrix[row_idx][col_idx + 1 :]
+            top = [row[col_idx] for row in matrix[:row_idx]]
+            bottom = [row[col_idx] for row in matrix[row_idx + 1 :]]
 
-                if (
-                    all(tree < current for tree in left)
-                    or all(tree < current for tree in right)
-                    or all(tree < current for tree in top)
-                    or all(tree < current for tree in bottom)
-                ):
-                    count += 1
+            if (
+                all(tree < current for tree in left)
+                or all(tree < current for tree in right)
+                or all(tree < current for tree in top)
+                or all(tree < current for tree in bottom)
+            ):
+                count += 1
 
     return count
 
 
-def get_highest_scenic_score(matrix):
-    score = 0
-    transposed = list(zip(*matrix))
+def get_distance(current, direction):
+    for idx, tree in enumerate(direction, start=1):
+        if tree >= current:
+            return idx
+    return len(direction)
 
-    for row_idx in range(len(matrix)):
-        for col_idx in range(len(matrix[0])):
-            pass
-    return 0
+
+def get_highest_scenic_score(matrix):
+    highest = 0
+    dim_row, dim_col = len(matrix), len(matrix[0])
+
+    for row_idx in range(dim_row):
+        for col_idx in range(dim_col):
+            current = matrix[row_idx][col_idx]
+            left = matrix[row_idx][:col_idx][::-1]
+            right = matrix[row_idx][col_idx + 1 :]
+            top = [row[col_idx] for row in matrix[:row_idx]][::-1]
+            bottom = [row[col_idx] for row in matrix[row_idx + 1 :]]
+
+            if left and right and top and bottom:
+                left_distance = get_distance(current, left)
+                right_distance = get_distance(current, right)
+                top_distance = get_distance(current, top)
+                bottom_distance = get_distance(current, bottom)
+
+                score = (
+                    left_distance
+                    * right_distance
+                    * top_distance
+                    * bottom_distance
+                )
+
+                if score > highest:
+                    highest = score
+
+    return highest
 
 
 if __name__ == "__main__":
