@@ -26,12 +26,11 @@ def sum_signal_strengths(filepath, cycles):
     return summed
 
 
-def draw_signal(filepath, cycles):
-    sprite_midpoint = (
-        2  # because buffer drawing starts at position 1 instead of 0
-    )
+def draw_signal(filepath):
+    # because drawing starts at position 1 instead of 0,
+    # set sprite midpoint to 2
+    sprite_midpoint = 2
     cycle = 0
-    buffer = 0
     signal = ""
 
     with Path(filepath).open("r") as f:
@@ -39,33 +38,27 @@ def draw_signal(filepath, cycles):
             values = line.strip()
 
             cycle += 1
-            buffer += 1
             signal += (
                 "#"
-                if sprite_midpoint - 1 == buffer
-                or sprite_midpoint == buffer
-                or sprite_midpoint + 1 == buffer
+                if max(sprite_midpoint - 1, 1) <= cycle % 40
+                and min(sprite_midpoint + 1, 40) >= cycle % 40
                 else "."
             )
 
-            if cycle in cycles:
+            if cycle % 40 == 0:
                 signal += "\n"
-                buffer = 0
 
             if values.startswith("addx"):
                 cycle += 1
-                buffer += 1
                 signal += (
                     "#"
-                    if sprite_midpoint - 1 == buffer
-                    or sprite_midpoint == buffer
-                    or sprite_midpoint + 1 == buffer
+                    if max(sprite_midpoint - 1, 1) <= cycle % 40
+                    and min(sprite_midpoint + 1, 40) >= cycle % 40
                     else "."
                 )
 
-                if cycle in cycles:
+                if cycle % 40 == 0:
                     signal += "\n"
-                    buffer = 0
 
                 sprite_midpoint += int(values.split()[1])
 
@@ -92,4 +85,4 @@ if __name__ == "__main__":
             sum_signal_strengths(args.input_path, [20, 60, 100, 140, 180, 220])
         )
     else:
-        print(draw_signal(args.input_path, [40, 80, 120, 160, 200, 240]))
+        print(draw_signal(args.input_path))
