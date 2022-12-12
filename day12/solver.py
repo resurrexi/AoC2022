@@ -1,54 +1,75 @@
 from pathlib import Path
 
-
-class PathNode:
-    def __init__(self, x, y, elevation, is_destination=False):
-        self.x = x
-        self.y = y
-        self.elevation = elevation
-        self.is_destination = is_destination
-        self.L = None
-        self.R = None
-        self.T = None
-        self.B =None
-
-    def add_L(self, L):
-        self.L = L
-
-    def add_R(self, R):
-        self.R = R
-
-    def add_T(self, T):
-        self.T = T
-
-    def add_B(self, B):
-        self.B = B
-
-    def go_direction(self, direction):
-        if direction == "left":
-            return self.L
-        elif direction == "right":
-            return self.R
-        elif direction == "up":
-            return self.T
-        else:
-            return self.B
+ELEVATION_MAP = dict(
+    zip("abcdefghijklmnopqrstuvwxyzSE", list(range(26)) + [0, 25])
+)
 
 
-def generate_matrix(filepath):
+def build_matrix(filepath):
     matrix = []
+    start = None
+    end = None
 
     with Path(filepath).open("r") as f:
-        for line in f:
+        for idx, line in enumerate(f):
             values = list(line.strip())
+
+            if "S" in values:
+                start = (idx, values.index("S"))
+            if "E" in values:
+                end = (idx, values.index("E"))
+
             matrix.append(values)
-    return matrix
+
+    return matrix, start, end
 
 
-def get_shortest(matrix, cursor=(0,0), traversed=[], to_traverse=[], step=0):
-    x, y = cursor
-    elevation = "z" if matrix[x][y] == "E" else matrix[x][y]
-    is_destination = matrix[x][y] == "E"
+def process_cell(y, x, matrix, compare, traversed, to_traverse, min_step):
+    cell = matrix[y][x]
+
+    if (ELEVATION_MAP[cell] == compare) or (ELEVATION_MAP[cell] == compare - 1):
+        if (y, x) in traversed.keys():
+            min_step = min(traversed[(y, x)], min_step)
+    if (ELEVATION_MAP[cell] == compare) or (ELEVATION_MAP[cell] == compare + 1):
+        if (y, x) not in traversed.keys():
+            to_traverse.append((y, x))
+
+    return min_step, to_traverse
+
+
+def build_paths(matrix, cursor):
+    y, x = cursor
+    traversed = {}
+    to_traverse = [cursor]
+
+    while len(to_traverse) > 0:
+        elevation = ELEVATION_MAP[matrix[y][x]]
+
+        # find adjacent paths to determine next minimum step
+        min_step = -1 if matrix[y][x] == "S" else 9999
+
+        if x - 1 >= 0:
+            min_step, to_traverse = process_cell(
+                y, x - 1, matrix, elevation, traversed, to_traverse, min_step
+            )
+        if x + 1 <= len(matrix[0]) - 1:
+            min_step, to_traverse = process_cell(
+                y, x + 1, matrix, elevation, traversed, to_traverse, min_step
+            )
+        if y - 1 >= 0:
+            min_step, to_traverse = process_cell(
+                y - 1, x, matrix, elevation, traversed, to_traverse, min_step
+            )
+        if y + 1 <= len(matrix) - 1:
+            min_step, to_traverse = process_cell(
+                y + 1, x, matrix, elevation, traversed, to_traverse, min_step
+            )
+
+        traversed[(y, x)] = min_step + 1
+
+        y, x = to_traverse.pop(0)
+
+    return traversed
 
 
 if __name__ == "__main__":
@@ -66,7 +87,10 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    M, start, end = build_matrix(args.input_path)
+
     if args.part == "1":
-        pass
+        optimized = build_paths(M, start)
+        print(optimized[end])
     else:
         pass
