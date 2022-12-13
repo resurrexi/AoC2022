@@ -25,7 +25,7 @@ def build_matrix(filepath):
 
 
 def process_neighbor(
-    neighbor, current, matrix, traversed, steps=[], add_to_traverse=[]
+    neighbor, current, matrix, traversed, steps=[], to_traverse=[]
 ):
     neighbor_y, neighbor_x = neighbor
 
@@ -36,7 +36,7 @@ def process_neighbor(
         or neighbor_y < 0
         or neighbor_y > len(matrix) - 1
     ):
-        return steps, add_to_traverse
+        return steps, to_traverse
 
     curr_y, curr_x = current
     curr_ele = ELEVATION_MAP[matrix[curr_y][curr_x]]
@@ -50,34 +50,35 @@ def process_neighbor(
             steps.append(traversed[(neighbor_y, neighbor_x)])
 
     # if neighbor is same height or 1 unit higher than current
-    if neighbor_ele == curr_ele or neighbor_ele == curr_ele + 1:
-        if ((neighbor_y, neighbor_x) not in traversed) and (
-            (neighbor_y, neighbor_x) not in add_to_traverse
-        ):
-            add_to_traverse.append((neighbor_y, neighbor_x))
+    if neighbor_ele <= curr_ele or neighbor_ele == curr_ele + 1:
+        if (neighbor_y, neighbor_x) not in traversed:
+            # this is to ensure we don't overload `to_traverse` with the
+            # same neighbor to traverse. Max allowed is really 4 since
+            # there are 4 directions that can converge to the neighbor
+            if to_traverse.count((neighbor_y, neighbor_x)) < 4:
+                to_traverse.append((neighbor_y, neighbor_x))
 
-    return steps, add_to_traverse
+    return steps, to_traverse
 
 
-def get_neighbors(curr, matrix, traversed):
+def get_neighbors(curr, matrix, traversed, to_traverse):
     steps = []
-    add_to_traverse = []
     curr_y, curr_x = curr
 
-    steps, add_to_traverse = process_neighbor(
-        (curr_y, curr_x - 1), curr, matrix, traversed, steps, add_to_traverse
+    steps, to_traverse = process_neighbor(
+        (curr_y, curr_x - 1), curr, matrix, traversed, steps, to_traverse
     )
-    steps, add_to_traverse = process_neighbor(
-        (curr_y, curr_x + 1), curr, matrix, traversed, steps, add_to_traverse
+    steps, to_traverse = process_neighbor(
+        (curr_y, curr_x + 1), curr, matrix, traversed, steps, to_traverse
     )
-    steps, add_to_traverse = process_neighbor(
-        (curr_y - 1, curr_x), curr, matrix, traversed, steps, add_to_traverse
+    steps, to_traverse = process_neighbor(
+        (curr_y - 1, curr_x), curr, matrix, traversed, steps, to_traverse
     )
-    steps, add_to_traverse = process_neighbor(
-        (curr_y + 1, curr_x), curr, matrix, traversed, steps, add_to_traverse
+    steps, to_traverse = process_neighbor(
+        (curr_y + 1, curr_x), curr, matrix, traversed, steps, to_traverse
     )
 
-    return steps, add_to_traverse
+    return steps, to_traverse
 
 
 def build_paths(matrix, start, end):
@@ -98,14 +99,16 @@ def build_paths(matrix, start, end):
     if end_y + 1 <= len(matrix) - 1:
         end_condition.append((end_y + 1, end_x))
 
+    idx = 0
     while len(to_traverse) > 0:
         curr = to_traverse.pop(0)
 
         # process neighbors
-        neighbor_steps, add_to_traverse = get_neighbors(
+        neighbor_steps, to_traverse = get_neighbors(
             curr,
             matrix,
             traversed,
+            to_traverse,
         )
 
         # if current cell is the starting position, then step is 0
@@ -114,7 +117,20 @@ def build_paths(matrix, start, end):
         else:
             traversed[curr] = min(neighbor_steps) + 1
 
-        to_traverse += add_to_traverse
+        # diagnostics
+        print(idx)
+        printed = ""
+        for row in range(len(matrix)):
+            for col in range(len(matrix[0])):
+                if (row, col) in traversed:
+                    printed += "@"
+                elif (row, col) in to_traverse:
+                    printed += "X"
+                else:
+                    printed += "-"
+            printed += "\n"
+        print(printed)
+        idx += 1
 
         # early termination
         if all(cell in traversed for cell in end_condition):
