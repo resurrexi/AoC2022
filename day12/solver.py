@@ -24,50 +24,101 @@ def build_matrix(filepath):
     return matrix, start, end
 
 
-def process_cell(y, x, matrix, compare, traversed, to_traverse, min_step):
-    cell = matrix[y][x]
+def process_neighbor(
+    neighbor, current, matrix, traversed, steps=[], add_to_traverse=[]
+):
+    neighbor_y, neighbor_x = neighbor
 
-    if (ELEVATION_MAP[cell] == compare) or (ELEVATION_MAP[cell] == compare - 1):
-        if (y, x) in traversed.keys():
-            min_step = min(traversed[(y, x)], min_step)
-    if (ELEVATION_MAP[cell] == compare) or (ELEVATION_MAP[cell] == compare + 1):
-        if (y, x) not in traversed.keys():
-            to_traverse.append((y, x))
+    # if neighbor is out of bounds
+    if (
+        neighbor_x < 0
+        or neighbor_x > len(matrix[0]) - 1
+        or neighbor_y < 0
+        or neighbor_y > len(matrix) - 1
+    ):
+        return steps, add_to_traverse
 
-    return min_step, to_traverse
+    curr_y, curr_x = current
+    curr_ele = ELEVATION_MAP[matrix[curr_y][curr_x]]
+    neighbor_ele = ELEVATION_MAP[matrix[neighbor_y][neighbor_x]]
+
+    # if neighbor is higher than current, or current is 1 unit higher than
+    # neighbor then we can assume that we can walk from neighbor to current
+    # thus, we can get their stepped value
+    if neighbor_ele >= curr_ele or neighbor_ele == curr_ele - 1:
+        if (neighbor_y, neighbor_x) in traversed:
+            steps.append(traversed[(neighbor_y, neighbor_x)])
+
+    # if neighbor is same height or 1 unit higher than current
+    if neighbor_ele == curr_ele or neighbor_ele == curr_ele + 1:
+        if ((neighbor_y, neighbor_x) not in traversed) and (
+            (neighbor_y, neighbor_x) not in add_to_traverse
+        ):
+            add_to_traverse.append((neighbor_y, neighbor_x))
+
+    return steps, add_to_traverse
 
 
-def build_paths(matrix, cursor):
-    y, x = cursor
+def get_neighbors(curr, matrix, traversed):
+    steps = []
+    add_to_traverse = []
+    curr_y, curr_x = curr
+
+    steps, add_to_traverse = process_neighbor(
+        (curr_y, curr_x - 1), curr, matrix, traversed, steps, add_to_traverse
+    )
+    steps, add_to_traverse = process_neighbor(
+        (curr_y, curr_x + 1), curr, matrix, traversed, steps, add_to_traverse
+    )
+    steps, add_to_traverse = process_neighbor(
+        (curr_y - 1, curr_x), curr, matrix, traversed, steps, add_to_traverse
+    )
+    steps, add_to_traverse = process_neighbor(
+        (curr_y + 1, curr_x), curr, matrix, traversed, steps, add_to_traverse
+    )
+
+    return steps, add_to_traverse
+
+
+def build_paths(matrix, start, end):
     traversed = {}
-    to_traverse = [cursor]
+    to_traverse = [start]
+
+    # create early termination conditions
+    # if end and its neighbors are in traversed
+    end_y, end_x = end
+    end_condition = [end]
+
+    if end_x - 1 >= 0:
+        end_condition.append((end_y, end_x - 1))
+    if end_x + 1 <= len(matrix[0]) - 1:
+        end_condition.append((end_y, end_x + 1))
+    if end_y - 1 >= 0:
+        end_condition.append((end_y - 1, end_x))
+    if end_y + 1 <= len(matrix) - 1:
+        end_condition.append((end_y + 1, end_x))
 
     while len(to_traverse) > 0:
-        elevation = ELEVATION_MAP[matrix[y][x]]
+        curr = to_traverse.pop(0)
 
-        # find adjacent paths to determine next minimum step
-        min_step = -1 if matrix[y][x] == "S" else 9999
+        # process neighbors
+        neighbor_steps, add_to_traverse = get_neighbors(
+            curr,
+            matrix,
+            traversed,
+        )
 
-        if x - 1 >= 0:
-            min_step, to_traverse = process_cell(
-                y, x - 1, matrix, elevation, traversed, to_traverse, min_step
-            )
-        if x + 1 <= len(matrix[0]) - 1:
-            min_step, to_traverse = process_cell(
-                y, x + 1, matrix, elevation, traversed, to_traverse, min_step
-            )
-        if y - 1 >= 0:
-            min_step, to_traverse = process_cell(
-                y - 1, x, matrix, elevation, traversed, to_traverse, min_step
-            )
-        if y + 1 <= len(matrix) - 1:
-            min_step, to_traverse = process_cell(
-                y + 1, x, matrix, elevation, traversed, to_traverse, min_step
-            )
+        # if current cell is the starting position, then step is 0
+        if curr == start:
+            traversed[curr] = 0
+        else:
+            traversed[curr] = min(neighbor_steps) + 1
 
-        traversed[(y, x)] = min_step + 1
+        to_traverse += add_to_traverse
 
-        y, x = to_traverse.pop(0)
+        # early termination
+        if all(cell in traversed for cell in end_condition):
+            return traversed
 
     return traversed
 
@@ -90,7 +141,7 @@ if __name__ == "__main__":
     M, start, end = build_matrix(args.input_path)
 
     if args.part == "1":
-        optimized = build_paths(M, start)
+        optimized = build_paths(M, start, end)
         print(optimized[end])
     else:
         pass
