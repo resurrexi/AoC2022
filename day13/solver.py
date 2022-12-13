@@ -70,6 +70,24 @@ def get_sorted_indices(filepath):
     return ordered_idx
 
 
+def get_decoder_key(filepath):
+    packets = []
+
+    with Path(filepath).open("r") as f:
+        for i, line in enumerate(f, start=1):
+            if i % 3 == 0:
+                continue
+
+            packets.append(json.loads(line.strip()))
+
+    packets.append([[2]])
+    packets.append([[6]])
+
+    # TODO: implement sort
+
+    return packets.index([[2]]) + 1 * packets.index([[6]]) + 1
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -89,4 +107,4 @@ if __name__ == "__main__":
         indices = get_sorted_indices(args.input_path)
         print(sum(indices))
     else:
-        pass
+        print(get_decoder_key(args.input_path))
