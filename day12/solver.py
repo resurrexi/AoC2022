@@ -81,7 +81,7 @@ def get_neighbors(curr, matrix, traversed, to_traverse):
     return steps, to_traverse
 
 
-def build_paths(matrix, start, end):
+def build_paths(matrix, start, end, visual=True):
     traversed = {}
     to_traverse = [start]
 
@@ -118,25 +118,50 @@ def build_paths(matrix, start, end):
             traversed[curr] = min(neighbor_steps) + 1
 
         # diagnostics
-        print(idx)
-        printed = ""
-        for row in range(len(matrix)):
-            for col in range(len(matrix[0])):
-                if (row, col) in traversed:
-                    printed += "@"
-                elif (row, col) in to_traverse:
-                    printed += "X"
-                else:
-                    printed += "-"
-            printed += "\n"
-        print(printed)
-        idx += 1
+        if visual:
+            print(f"{idx=}")
+            printed = ""
+            for row in range(len(matrix)):
+                for col in range(len(matrix[0])):
+                    if (row, col) == start:
+                        printed += "S"
+                    elif (row, col) == end:
+                        printed += "E"
+                    elif (row, col) in traversed:
+                        printed += "@"
+                    elif (row, col) in to_traverse:
+                        printed += "X"
+                    else:
+                        printed += "-"
+                printed += "\n"
+            print(printed)
+            idx += 1
 
         # early termination
         if all(cell in traversed for cell in end_condition):
             return traversed
 
     return traversed
+
+
+def find_shortest_path(matrix, end):
+    a_cells = []
+    path_lengths = []
+
+    for row in range(len(matrix)):
+        for col in range(len(matrix[0])):
+            if matrix[row][col] == "a":
+                a_cells.append((row, col))
+
+    for cell in a_cells:
+        try:
+            path_lengths.append(
+                build_paths(matrix, cell, end, visual=False)[end]
+            )
+        except KeyError:
+            pass
+
+    return min(path_lengths)
 
 
 if __name__ == "__main__":
@@ -160,4 +185,4 @@ if __name__ == "__main__":
         optimized = build_paths(M, start, end)
         print(optimized[end])
     else:
-        pass
+        print(find_shortest_path(M, end))
