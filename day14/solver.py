@@ -90,6 +90,38 @@ def get_max_sand(cave, visual=True):
     return idx - 1  # don't count the sand that falls to abyss
 
 
+def get_sand_to_stop(cave):
+    _, max_y, min_x, max_x = get_bounds(cave)
+    sand_y, sand_x = source = (0, 500)
+    cave_copy = cave.copy()
+
+    # add floor
+    max_y += 2
+    for col in range(min_x, max_x + 1):
+        cave_copy[(max_y, col)] = "#"
+
+    idx = 1
+    while True:
+
+        sand_y, sand_x = drizzle(source, cave_copy, (0, max_y, min_x, max_x))
+
+        if (sand_y, sand_x) == source:
+            # stopped flow
+            break
+        else:
+            cave_copy[(sand_y, sand_x)] = "o"
+
+        # expand floor
+        min_x -= 1
+        max_x += 1
+        cave_copy[(max_y, min_x)] = "#"
+        cave_copy[(max_y, max_x)] = "#"
+
+        idx += 1
+
+    return idx
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -110,4 +142,4 @@ if __name__ == "__main__":
     if args.part == "1":
         print(get_max_sand(cave))
     else:
-        pass
+        print(get_sand_to_stop(cave))
