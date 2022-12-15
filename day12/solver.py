@@ -1,4 +1,6 @@
+from collections import OrderedDict
 from pathlib import Path
+from random import randint
 
 ELEVATION_MAP = dict(
     zip("abcdefghijklmnopqrstuvwxyzSE", list(range(26)) + [0, 25])
@@ -164,6 +166,72 @@ def find_shortest_path(matrix, end):
     return min(path_lengths)
 
 
+def is_neighbor(curr, candidate):
+    curr_y, curr_x = curr
+    cand_y, cand_x = candidate
+
+    if curr_y == cand_y and curr_x - 1 == cand_x:
+        return True
+    if curr_y == cand_y and curr_x + 1 == cand_x:
+        return True
+    if curr_y - 1 == cand_y and curr_x == cand_x:
+        return True
+    if curr_y + 1 == cand_y and curr_x == cand_x:
+        return True
+
+    return False
+
+
+def get_direction(start, end):
+    start_y, start_x = start
+    end_y, end_x = end
+
+    if start_y < end_y:
+        return "v"
+    if start_y > end_y:
+        return "^"
+    if start_x < end_x:
+        return ">"
+    return "<"
+
+
+def get_random_optimized_path(optimized, start, end):
+    optimized_copy = optimized.copy()
+    path = OrderedDict()
+    path[start] = "S"  # add starting point to path
+
+    idx = 1
+    while idx <= optimized_copy[end]:
+        cells = [k for k, v in optimized_copy.items() if v == idx]
+
+        # filter out cells that are neighbors of last cell in path
+        neighbors = [k for k in cells if is_neighbor(k, list(path.keys())[-1])]
+
+        if (len(neighbors) == 0) or (
+            idx == optimized_copy[end] and end not in neighbors
+        ):
+            # last cell in path is a dead end or isn't endpoint; delete
+            last_path_node = list(path.keys())[-1]
+            del optimized_copy[last_path_node]
+            del path[last_path_node]
+            # backtrack and redo
+            idx -= 1
+            continue
+
+        if idx == optimized_copy[end]:
+            path[end] = "E"
+        else:
+            # select a random neighbor and attach to path
+            choice = randint(0, len(neighbors) - 1)
+            path[neighbors[choice]] = get_direction(
+                list(path.keys())[-1], neighbors[choice]
+            )
+
+        idx += 1
+
+    return path
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -182,7 +250,19 @@ if __name__ == "__main__":
     M, start, end = build_matrix(args.input_path)
 
     if args.part == "1":
-        optimized = build_paths(M, start, end)
+        optimized = build_paths(M, start, end, visual=False)
         print(optimized[end])
+
+        shortest = get_random_optimized_path(optimized, start, end)
+
+        printed = ""
+        for row in range(len(M)):
+            for col in range(len(M[0])):
+                if (row, col) in shortest:
+                    printed += shortest[(row, col)]
+                else:
+                    printed += "-"
+            printed += "\n"
+        print(printed)
     else:
         print(find_shortest_path(M, end))
