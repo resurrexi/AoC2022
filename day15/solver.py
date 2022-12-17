@@ -1,8 +1,7 @@
 import functools
 import re
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from threading import Event
 
 
 def get_bounds(devices):
@@ -45,36 +44,54 @@ def get_devices(filepath):
     return devices
 
 
+def cannot_have_beacon(x, y, devices):
+    # if position is already occupied
+    if (y, x) in devices:
+        return 0
+
+    # if position is within coverage of a sensor
+    sensors = dict([(k, v) for k, v in devices.items() if v["type"] == "S"])
+    for k, v in sensors.items():
+        distance = get_distance((y, x), k)
+
+        if distance <= v["coverage"]:
+            return 1
+
+    return 0
+
+
 def get_coverage(devices, line):
     _, _, min_col, max_col = get_bounds(devices)
-    sensors = dict([(k, v) for k, v in devices.items() if v["type"] == "S"])
 
-    coverage = 0
-    for col in range(min_col, max_col + 1):
-        # if this point is a device, don't evaluate
-        if (line, col) in devices:
-            continue
+    with ProcessPoolExecutor() as executor:
+        results = executor.map(
+            functools.partial(
+                cannot_have_beacon,
+                y=line,
+                devices=devices,
+            ),
+            range(min_col, max_col + 1),
+            chunksize=100,
+        )
 
-        # is this point on the line within any coverage of a S
-        for k, v in sensors.items():
-            distance = get_distance((line, col), k)
-
-            if distance <= v["coverage"]:
-                coverage += 1
-                break
-
-    return coverage
+        return sum(results)
 
 
-def parallel_search(position, devices, distance_fn, event):
-    # another task found beacon; terminate
-    if event.is_set():
-        return False
+def parallel_search(
+    unit, pivot, from_corner, sensors, search_space, distance_fn
+):
+    min_row, max_row, min_col, max_col = search_space
 
-    sensors = dict([(k, v) for k, v in devices.items() if v["type"] == "S"])
-    row, col = position
+    if from_corner == "top":
+        row, col = pivot[0] + unit, pivot[1] + unit
+    elif from_corner == "right":
+        row, col = pivot[0] + unit, pivot[1] - unit
+    elif from_corner == "bottom":
+        row, col = pivot[0] - unit, pivot[1] - unit
+    else:
+        row, col = pivot[0] - unit, pivot[1] + unit
 
-    if (row, col) in devices:
+    if row < min_row or row > max_row or col < min_col or col > max_col:
         return False
 
     for k, v in sensors.items():
@@ -83,35 +100,51 @@ def parallel_search(position, devices, distance_fn, event):
         if distance <= v["coverage"]:
             return False
 
-    # exhausted all sensors, this position is the beacon
+    # exhausted all sensors within search space, this position is the beacon
     return True
 
 
 def search_beacon(devices, search_space):
-    min_row, max_row, min_col, max_col = search_space
-    event = Event()
+    min_row, _, min_col, _ = search_space
+    sensors = dict([(k, v) for k, v in devices.items() if v["type"] == "S"])
 
-    # feed them to worker pool
-    with ThreadPoolExecutor(max_workers=1000) as executor:
-        for row in range(min_row, max_row + 1):
-            # generate list of candidates to search
-            candidates = [(row, col) for col in range(min_col, max_col + 1)]
+    # parallelize
+    with ProcessPoolExecutor() as executor:
+        for k, v in sensors.items():
+            s_y, s_x = k
+            s_cov = v["coverage"]
+            bounds = {}
 
-            results = executor.map(
-                functools.partial(
-                    parallel_search,
-                    devices=devices,
-                    distance_fn=get_distance,
-                    event=event,
-                ),
-                candidates,
-            )
+            bounds["top"] = (s_y - s_cov - 1, s_x)
+            bounds["right"] = (s_y, s_x + s_cov + 1)
+            bounds["bottom"] = (s_y + s_cov + 1, s_x)
+            bounds["left"] = (s_y, s_x - s_cov - 1)
 
-            for pos, found in zip(candidates, results):
-                if found:
-                    # mark event to set so remaining tasks finish early
-                    event.set()
-                    return pos
+            # sweep clockwise around sensor's border
+            for corner, position in bounds.items():
+                results = executor.map(
+                    functools.partial(
+                        parallel_search,
+                        pivot=position,
+                        from_corner=corner,
+                        sensors=sensors,
+                        search_space=search_space,
+                        distance_fn=get_distance,
+                    ),
+                    range(s_cov + 1),
+                    chunksize=100,
+                )
+
+                for unit, found in zip(range(s_cov), results):
+                    if found:
+                        if corner == "top":
+                            return position[0] + unit, position[1] + unit
+                        elif corner == "right":
+                            return position[0] + unit, position[1] - unit
+                        elif corner == "bottom":
+                            return position[0] - unit, position[1] - unit
+                        else:
+                            return position[0] - unit, position[1] + unit
 
     # return OOB coords if beacon not found
     return min_row - 1, min_col - 1
